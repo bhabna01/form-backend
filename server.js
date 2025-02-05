@@ -13,7 +13,8 @@ app.use(express.json());
 
 const templateRoutes = require("./routes/templateRoutes");
 const formRoutes = require("./routes/formRoutes");
-
+const adminRoutes = require("./routes/adminRoutes");
+const authRoutes=require("./routes/authRoutes")
 // ✅ Database connection test route
 app.get("/db-check", async (req, res) => {
   try {
@@ -26,6 +27,8 @@ app.get("/db-check", async (req, res) => {
 
 app.use("/api/templates", templateRoutes);
 app.use("/api/forms", formRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/auth", authRoutes);
 
 // Default route
 app.get("/", (req, res) => {

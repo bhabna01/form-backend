@@ -12,45 +12,156 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
 model User {
-  id       String  @id @default(uuid())
-  email    String  @unique
-  password String
-  role     String  @default("user") // "admin" or "user"
-
-  templates Template[]
-  forms     Form[]
+  id            Int              @id @default(autoincrement())
+  username      String           @unique @db.VarChar(50)
+  email         String           @unique @db.VarChar(100)
+  passwordHash  String           @map("password_hash") @db.VarChar(255)
+  isAdmin       Boolean          @default(false) @map("is_admin")
+  isBlocked     Boolean          @default(false) @map("is_blocked")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  templates     Template[]
+  forms         Form[]
+  comments      Comment[]
+  likes         Like[]
+  preferences   UserPreferences?
+  templateUsers TemplateUser[]  // Only keep valid relationships
+  
+  @@map("Users")
 }
-
 model Template {
-  id          String  @id @default(uuid())
-  title       String
+  id          Int           @id @default(autoincrement())
+  title       String        @db.VarChar(255)
   description String?
-  topic       String
-  tags        String[]
-  isPublic    Boolean @default(true)
-  authorId    String
-  author      User    @relation(fields: [authorId], references: [id])
+  topic       String?       @db.VarChar(50)
+  imageUrl    String?       @map("image_url")
+  isPublic    Boolean       @default(false) @map("is_public")
+  authorId    Int?          @map("author_id")
+  author      User?         @relation(fields: [authorId], references: [id])
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
   questions   Question[]
   forms       Form[]
+  comments    Comment[]
+  likes       Like[]
+  templateTags TemplateTag[]
+  templateUsers TemplateUser[]
+  
+  @@map("Templates")
 }
 
 model Question {
-  id          String  @id @default(uuid())
-  text        String
-  type        String // "text", "integer", "dropdown", etc.
-  options     String? // JSON string for dropdown options
-  templateId  String
-  template    Template @relation(fields: [templateId], references: [id])
+  id                  Int            @id @default(autoincrement())
+  templateId          Int            @map("template_id")
+  template            Template       @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  title               String         @db.VarChar(255)
+  description         String?
+  type                QuestionType
+  orderIndex          Int            @map("order_index")
+  isDisplayedInTable  Boolean        @default(false) @map("is_displayed_in_table")
+  answers             Answer[]
+  
+  @@map("Questions")
 }
 
 model Form {
-  id         String  @id @default(uuid())
-  userId     String
-  user       User    @relation(fields: [userId], references: [id])
-  templateId String
-  template   Template @relation(fields: [templateId], references: [id])
-  answers    Json
+  id          Int      @id @default(autoincrement())
+  templateId  Int      @map("template_id")
+  template    Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  userId      Int?     @map("user_id")
+  user        User?    @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  answers     Answer[]
+  
+  @@map("Forms")
 }
 
+model Answer {
+  id          Int      @id @default(autoincrement())
+  formId      Int      @map("form_id")
+  form        Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  questionId  Int      @map("question_id")
+  question    Question @relation(fields: [questionId], references: [id])
+  value       String?
+  
+  @@map("Answers")
+}
+
+model Comment {
+  id          Int      @id @default(autoincrement())
+  templateId  Int      @map("template_id")
+  template    Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  userId      Int      @map("user_id")
+  user        User     @relation(fields: [userId], references: [id])
+  content     String
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@map("Comments")
+}
+
+model Like {
+  id          Int      @id @default(autoincrement())
+  templateId  Int      @map("template_id")
+  template    Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  userId      Int      @map("user_id")
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@unique([templateId, userId])
+  @@map("Likes")
+}
+
+model Tag {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique @db.VarChar(50)
+  templateTags TemplateTag[]
+  
+  @@map("Tags")
+}
+
+model TemplateTag {
+  templateId  Int      @map("template_id")
+  tagId       Int      @map("tag_id")
+  template    Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  tag         Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@id([templateId, tagId])
+  @@map("Template_Tags")
+}
+
+model TemplateUser {
+  templateId  Int      @map("template_id")
+  userId      Int      @map("user_id")
+  template    Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@id([templateId, userId])
+  @@map("Template_Users")
+}
+
+model UserPreferences {
+  userId    Int      @id @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language  Language @default(en)
+  theme     Theme    @default(light)
+  
+  @@map("UserPreferences")
+}
+
+enum QuestionType {
+  single_line
+  multi_line
+  integer
+  checkbox
+}
+
+enum Language {
+  en
+  other
+}
+
+enum Theme {
+  light
+  dark
+}
