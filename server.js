@@ -11,6 +11,9 @@ const prisma = new PrismaClient(); // Initialize Prisma Client
 app.use(cors());
 app.use(express.json());
 
+const templateRoutes = require("./routes/templateRoutes");
+const formRoutes = require("./routes/formRoutes");
+
 // ✅ Database connection test route
 app.get("/db-check", async (req, res) => {
   try {
@@ -20,6 +23,9 @@ app.get("/db-check", async (req, res) => {
     res.status(500).json({ success: false, message: "Database connection failed!", error: error.message });
   }
 });
+
+app.use("/api/templates", templateRoutes);
+app.use("/api/forms", formRoutes);
 
 // Default route
 app.get("/", (req, res) => {
